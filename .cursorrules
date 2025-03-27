@@ -1,0 +1,163 @@
+
+
+# 公众号文章自动化运营平台需求文档
+
+## 1. 系统概述
+
+本系统旨在提供一个自动化的公众号文章管理和发布平台，集成文章生成、排版、图片生成及定时发布等功能。
+
+## 2. 技术栈选择
+
+- 后端框架：FastAPI
+- 编程语言：Python 3.8+
+- 数据库：PostgreSQL
+- 文件存储：阿里云OSS/腾讯云COS
+- AI服务：OpenAI API/Stable Diffusion
+- 任务队列：Celery
+- 缓存：Redis
+
+## 3. 功能需求
+
+### 3.1 文章管理模块
+- 支持多种格式文章导入（Markdown、Word、TXT等）
+- 文章在线编辑功能
+- 文章分类管理
+- 文章状态管理（草稿、待发布、已发布等）
+- 文章版本控制
+
+### 3.2 AI内容生成模块
+- 接入大语言模型API
+- 支持根据关键词/提示词生成文章内容
+- AI图片生成功能
+  - 支持多种图片生成模型
+  - 图片尺寸和风格可配置
+  - 图片本地化存储
+
+### 3.3 排版模块
+- Markdown渲染支持
+- 自定义排版模板
+- 图文混排功能
+- 预览功能
+- 支持自定义CSS样式
+
+### 3.4 微信公众号集成模块
+- 公众号授权管理
+  - 支持多个公众号授权
+  - Token管理和自动刷新
+- 素材库管理
+  - 图片素材上传
+  - 素材分类管理
+- 发布管理
+  - 支持定时发布
+  - 发布历史记录
+  - 发布状态追踪
+
+### 3.5 系统管理模块
+- 用户权限管理
+- 系统配置管理
+- 操作日志记录
+- 数据统计分析
+
+## 4. 数据库设计（核心表）
+
+```sql
+-- 文章表
+CREATE TABLE articles (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200),
+    content TEXT,
+    status VARCHAR(20),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    author_id INTEGER,
+    category_id INTEGER
+);
+
+-- 公众号授权表
+CREATE TABLE official_accounts (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    appid VARCHAR(50),
+    app_secret VARCHAR(100),
+    access_token VARCHAR(200),
+    refresh_token VARCHAR(200),
+    expires_at TIMESTAMP
+);
+
+-- 发布计划表
+CREATE TABLE publish_schedules (
+    id SERIAL PRIMARY KEY,
+    article_id INTEGER,
+    account_id INTEGER,
+    scheduled_time TIMESTAMP,
+    status VARCHAR(20),
+    created_at TIMESTAMP
+);
+```
+
+## 5. API接口设计（核心接口）
+
+```python
+# 文章管理接口
+@app.post("/api/articles/")
+async def create_article(article: ArticleCreate):
+    """创建文章"""
+
+@app.get("/api/articles/{article_id}")
+async def get_article(article_id: int):
+    """获取文章详情"""
+
+# AI生成接口
+@app.post("/api/ai/generate-content")
+async def generate_content(prompt: str):
+    """生成文章内容"""
+
+@app.post("/api/ai/generate-image")
+async def generate_image(prompt: str):
+    """生成配图"""
+
+# 公众号管理接口
+@app.post("/api/accounts/authorize")
+async def authorize_account(code: str):
+    """公众号授权"""
+
+@app.post("/api/articles/publish")
+async def publish_article(article_id: int, account_id: int):
+    """发布文章"""
+```
+
+## 6. 非功能需求
+
+### 6.1 性能需求
+- API响应时间：95%的请求在500ms内响应
+- 图片生成时间：单张图片生成不超过30秒
+- 系统支持并发用户数：100+
+
+### 6.2 安全需求
+- 用户认证和授权
+- 数据加密传输
+- API访问限流
+- 敏感数据脱敏
+
+### 6.3 可用性需求
+- 系统7*24小时运行
+- 系统可用性99.9%
+- 具备完善的日志记录和监控告警
+
+## 7. 开发计划
+
+1. 第一阶段（2周）：
+   - 基础框架搭建
+   - 数据库设计和实现
+   - 文章管理模块开发
+
+2. 第二阶段（2周）：
+   - AI内容生成模块
+   - 排版模块开发
+   - 图片生成功能
+
+3. 第三阶段（2周）：
+   - 公众号授权集成
+   - 发布管理功能
+   - 系统测试和优化
+

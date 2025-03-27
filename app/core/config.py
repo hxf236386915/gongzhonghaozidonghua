@@ -1,22 +1,26 @@
-from pydantic_settings import BaseSettings
+from pydantic import BaseSettings
 from typing import Optional
-import os
 
 class Settings(BaseSettings):
-    # 数据库配置
-    DATABASE_URL: str = "sqlite:///./app.db"
-    
-    # API配置
+    PROJECT_NAME: str = "WeChat Official Account Automation Platform"
+    VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
-    # OpenAI配置
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "wechat_automation"
+    POSTGRES_PORT: str = "5432"
     
-    # 其他配置
-    PROJECT_NAME: str = "微信公众号自动化平台"
-    
+    DATABASE_URL: Optional[str] = None
+
+    @property
+    def sync_database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
     class Config:
-        case_sensitive = True
         env_file = ".env"
 
 settings = Settings() 
