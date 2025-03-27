@@ -5,6 +5,9 @@ import requests
 import aiohttp
 from typing import Optional
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
+import jwt
+from passlib.context import CryptContext
 
 load_dotenv()
 
@@ -123,4 +126,38 @@ def get_model_info(api_key: str, model_type: str) -> dict:
         }
     }
     
-    return model_configs.get(model_type, {}) 
+    return model_configs.get(model_type, {})
+
+# 密码上下文配置
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """验证密码是否匹配
+    
+    Args:
+        plain_password: 明文密码
+        hashed_password: 哈希后的密码
+    
+    Returns:
+        bool: 密码是否匹配
+    """
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """创建JWT访问令牌
+    
+    Args:
+        data: 要编码到令牌中的数据
+        expires_delta: 可选的令牌过期时间
+    
+    Returns:
+        str: 编码后的JWT令牌
+    """
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, ENCRYPTION_KEY, algorithm="HS256")
+    return encoded_jwt
