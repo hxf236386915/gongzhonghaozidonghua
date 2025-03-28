@@ -1,0 +1,32 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* 重置 Ant Design 默认样式 */
+.ant-layout {
+  min-height: 100vh !important;
+}
+
+.ant-layout-sider {
+  position: fixed !important;
+  height: 100vh !important;
+}
+
+.ant-layout-content {
+  width: 100% !important;
+}
+
+/* 修复 Ant Design 布局样式 */
+.ant-layout.ant-layout-has-sider {
+  width: 100vw;
+  min-height: 100vh;
+} 
