@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import os
 from pydantic import BaseModel
+from app.routers import system
 
 # 创建 FastAPI 实例
 app = FastAPI()
@@ -27,6 +28,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 注册系统管理路由
+app.include_router(system.router, prefix="/api/system", tags=["system"])
 
 # 模拟用户数据（临时使用，后续会改为数据库存储）
 USERS = {

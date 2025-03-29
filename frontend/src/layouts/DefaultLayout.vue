@@ -14,7 +14,7 @@
           <template #icon>
             <dashboard-outlined />
           </template>
-          <span>仪表盘</span>
+          <router-link to="/dashboard">仪表盘</router-link>
         </a-menu-item>
 
         <a-sub-menu key="system">
@@ -44,7 +44,7 @@
           <template #icon>
             <file-outlined />
           </template>
-          <span>操作日志</span>
+          <router-link to="/system/logs">操作日志</router-link>
         </a-menu-item>
       </a-menu>
     </a-layout-sider>
