@@ -9,39 +9,43 @@
         </div>
   
         <!-- 菜单树形表格 -->
-        <a-table
-          :columns="columns"
-          :data-source="menuList"
-          :loading="loading"
-          :pagination="false"
-        >
-          <template #icon="{ text }">
-            <component :is="text" v-if="text" />
-            <span v-else>-</span>
-          </template>
-          <template #type="{ text }">
-            <a-tag>{{ text === 'menu' ? '菜单' : '按钮' }}</a-tag>
-          </template>
-          <template #status="{ text }">
-            <a-tag :color="text === 'active' ? 'green' : 'red'">
-              {{ text === 'active' ? '启用' : '禁用' }}
-            </a-tag>
-          </template>
-          <template #action="{ record }">
-            <a-space>
-              <a @click="showCreateModal(record)">添加子菜单</a>
-              <a-divider type="vertical" />
-              <a @click="showEditModal(record)">编辑</a>
-              <a-divider type="vertical" />
-              <a-popconfirm
-                title="确定要删除这个菜单吗？"
-                @confirm="handleDelete(record.id)"
-              >
-                <a class="danger-link">删除</a>
-              </a-popconfirm>
-            </a-space>
-          </template>
-        </a-table>
+        <div class="table-container">
+          <a-table
+            :columns="columns"
+            :data-source="menuList"
+            :loading="loading"
+            :pagination="false"
+            row-key="id"
+            :scroll="{ y: 'calc(100vh - 280px)' }"
+          >
+            <template #icon="{ text }">
+              <component :is="text" v-if="text" />
+              <span v-else>-</span>
+            </template>
+            <template #type="{ text }">
+              <a-tag>{{ text === 'menu' ? '菜单' : '按钮' }}</a-tag>
+            </template>
+            <template #status="{ text }">
+              <a-tag :color="text === 'active' ? 'green' : 'red'">
+                {{ text === 'active' ? '启用' : '禁用' }}
+              </a-tag>
+            </template>
+            <template #action="{ record }">
+              <a-space>
+                <a @click="showCreateModal(record)">添加子菜单</a>
+                <a-divider type="vertical" />
+                <a @click="showEditModal(record)">编辑</a>
+                <a-divider type="vertical" />
+                <a-popconfirm
+                  title="确定要删除这个菜单吗？"
+                  @confirm="handleDelete(record.id)"
+                >
+                  <a class="danger-link">删除</a>
+                </a-popconfirm>
+              </a-space>
+            </template>
+          </a-table>
+        </div>
   
         <!-- 创建/编辑菜单弹窗 -->
         <a-modal
@@ -314,6 +318,7 @@
   <style scoped>
   .menus-container {
     padding: 24px;
+    height: 100%;
   }
   
   .table-operations {
@@ -326,5 +331,24 @@
   
   .danger-link:hover {
     color: #ff7875;
+  }
+  
+  .table-container {
+    margin-top: 16px;
+    height: calc(100vh - 180px);
+    overflow: hidden;
+  }
+  
+  :deep(.ant-table-wrapper) {
+    height: 100%;
+  }
+  
+  :deep(.ant-table) {
+    height: 100%;
+  }
+  
+  :deep(.ant-table-body) {
+    height: calc(100% - 55px) !important;
+    overflow-y: auto !important;
   }
   </style>

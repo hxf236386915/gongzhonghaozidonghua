@@ -55,6 +55,20 @@ const router = createRouter({
               component: () => import('@/views/system/Logs.vue')
             }
           ]
+        },
+        {
+          path: '/settings',
+          name: 'Settings',
+          component: () => import('@/views/settings/index.vue'),
+          meta: { title: '设置', icon: 'SettingOutlined' },
+          children: [
+            {
+              path: 'wechat',
+              name: 'WechatSettings',
+              component: () => import('@/views/settings/WechatSettings.vue'),
+              meta: { title: '公众号设置', icon: 'WechatOutlined', permission: 'settings:wechat' }
+            }
+          ]
         }
       ]
     }

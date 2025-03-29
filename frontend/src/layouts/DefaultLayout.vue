@@ -46,6 +46,20 @@
           </template>
           <router-link to="/system/logs">操作日志</router-link>
         </a-menu-item>
+
+        <a-sub-menu key="settings">
+          <template #icon>
+            <setting-outlined />
+          </template>
+          <template #title>设置</template>
+          
+          <a-menu-item key="wechat-settings">
+            <template #icon>
+              <wechat-outlined />
+            </template>
+            <router-link to="/settings/wechat">公众号设置</router-link>
+          </a-menu-item>
+        </a-sub-menu>
       </a-menu>
     </a-layout-sider>
     
@@ -114,7 +128,8 @@ import {
   LogoutOutlined,
   DownOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined
+  MenuUnfoldOutlined,
+  WechatOutlined
 } from '@ant-design/icons-vue'
 
 export default defineComponent({
@@ -127,7 +142,8 @@ export default defineComponent({
     LogoutOutlined,
     DownOutlined,
     MenuFoldOutlined,
-    MenuUnfoldOutlined
+    MenuUnfoldOutlined,
+    WechatOutlined
   },
   setup() {
     const router = useRouter()
@@ -136,7 +152,7 @@ export default defineComponent({
     
     const collapsed = ref(false)
     const selectedKeys = ref([route.name])
-    const openKeys = ref(['system'])
+    const openKeys = ref(['system', 'settings'])
 
     // 监听路由变化，更新选中的菜单项
     watch(() => route.name, (newVal) => {

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
+import httpx
 
 router = APIRouter()
 
@@ -287,6 +288,70 @@ permissions_data = [
         "sort": 1,
         "status": "active",
         "created_at": "2024-03-29 10:00:00"
+    },
+    # 设置管理
+    {
+        "id": 26,
+        "name": "设置管理",
+        "code": "settings",
+        "type": "directory",
+        "path": "/settings",
+        "component": "Layout",
+        "sort": 6,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 27,
+        "name": "公众号设置",
+        "code": "settings:wechat",
+        "type": "menu",
+        "path": "/settings/wechat",
+        "component": "@/views/settings/WechatSettings",
+        "parent_id": 26,
+        "sort": 1,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 28,
+        "name": "公众号查询",
+        "code": "settings:wechat:query",
+        "type": "button",
+        "parent_id": 27,
+        "sort": 1,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 29,
+        "name": "公众号新增",
+        "code": "settings:wechat:create",
+        "type": "button",
+        "parent_id": 27,
+        "sort": 2,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 30,
+        "name": "公众号删除",
+        "code": "settings:wechat:delete",
+        "type": "button",
+        "parent_id": 27,
+        "sort": 3,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 31,
+        "name": "Token刷新",
+        "code": "settings:wechat:refresh",
+        "type": "button",
+        "parent_id": 27,
+        "sort": 4,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
     }
 ]
 
@@ -398,6 +463,31 @@ menus_data = [
         "status": "active",
         "created_at": "2024-03-29 10:00:00",
         "permission": "system:log:list"
+    },
+    {
+        "id": 8,
+        "name": "设置",
+        "path": "/settings",
+        "component": "LAYOUT",
+        "icon": "SettingOutlined",
+        "type": "directory",
+        "sort": 6,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00",
+        "permission": "settings"
+    },
+    {
+        "id": 9,
+        "name": "公众号设置",
+        "path": "/settings/wechat",
+        "component": "@/views/settings/WechatSettings",
+        "icon": "WechatOutlined",
+        "type": "menu",
+        "parent_id": 8,
+        "sort": 1,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00",
+        "permission": "settings:wechat"
     }
 ]
 
@@ -458,6 +548,80 @@ logs_data = [
         "created_at": "2024-03-29 12:00:00"
     }
 ]
+
+# 公众号授权数据
+wechat_accounts = []
+
+# 公众号相关API
+@router.get("/wechat/accounts")
+async def get_wechat_accounts():
+    """获取已授权的公众号列表"""
+    return wechat_accounts
+
+@router.post("/wechat/accounts")
+async def create_wechat_account(account: dict):
+    """创建公众号授权"""
+    # 生成ID
+    account["id"] = len(wechat_accounts) + 1
+    account["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    wechat_accounts.append(account)
+    return account
+
+@router.delete("/wechat/accounts/{account_id}")
+async def delete_wechat_account(account_id: int):
+    """删除公众号授权"""
+    account = next((a for a in wechat_accounts if a["id"] == account_id), None)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    wechat_accounts.remove(account)
+    return {"message": "Account deleted successfully"}
+
+@router.post("/wechat/accounts/test")
+async def test_wechat_account(account: dict):
+    """测试公众号配置"""
+    try:
+        url = "https://api.weixin.qq.com/cgi-bin/token"
+        params = {
+            "grant_type": "client_credential",
+            "appid": account["appid"],
+            "secret": account["appsecret"]
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            result = response.json()
+            if "access_token" in result:
+                return {"success": True, "message": "测试通过"}
+            else:
+                return {"success": False, "message": f"测试失败：{result.get('errmsg', '未知错误')}"}
+    except Exception as e:
+        return {"success": False, "message": f"测试失败：{str(e)}"}
+
+@router.post("/wechat/accounts/{account_id}/refresh")
+async def refresh_wechat_token(account_id: int):
+    """刷新公众号token"""
+    account = next((a for a in wechat_accounts if a["id"] == account_id), None)
+    if not account:
+        raise HTTPException(status_code=404, detail="Account not found")
+    
+    try:
+        url = "https://api.weixin.qq.com/cgi-bin/token"
+        params = {
+            "grant_type": "client_credential",
+            "appid": account["appid"],
+            "secret": account["appsecret"]
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, params=params)
+            result = response.json()
+            if "access_token" in result:
+                account["access_token"] = result["access_token"]
+                account["expires_in"] = result["expires_in"]
+                account["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                return {"success": True, "message": "Token刷新成功"}
+            else:
+                return {"success": False, "message": f"Token刷新失败：{result.get('errmsg', '未知错误')}"}
+    except Exception as e:
+        return {"success": False, "message": f"Token刷新失败：{str(e)}"}
 
 # 权限管理API
 @router.get("/permissions")
