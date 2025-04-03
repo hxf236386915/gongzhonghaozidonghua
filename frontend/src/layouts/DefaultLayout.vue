@@ -10,56 +10,38 @@
         theme="light"
         mode="inline"
       >
-        <a-menu-item key="dashboard">
-          <template #icon>
-            <dashboard-outlined />
-          </template>
-          <router-link to="/dashboard">仪表盘</router-link>
-        </a-menu-item>
-
-        <a-sub-menu key="system">
-          <template #icon>
-            <setting-outlined />
-          </template>
-          <template #title>系统管理</template>
-          
-          <a-menu-item key="users">
-            <router-link to="/system/users">用户管理</router-link>
-          </a-menu-item>
-          
-          <a-menu-item key="roles">
-            <router-link to="/system/roles">角色管理</router-link>
-          </a-menu-item>
-          
-          <a-menu-item key="permissions">
-            <router-link to="/system/permissions">权限管理</router-link>
-          </a-menu-item>
-          
-          <a-menu-item key="menus">
-            <router-link to="/system/menus">菜单管理</router-link>
-          </a-menu-item>
-        </a-sub-menu>
-
-        <a-menu-item key="logs">
-          <template #icon>
-            <file-outlined />
-          </template>
-          <router-link to="/system/logs">操作日志</router-link>
-        </a-menu-item>
-
-        <a-sub-menu key="settings">
-          <template #icon>
-            <setting-outlined />
-          </template>
-          <template #title>设置</template>
-          
-          <a-menu-item key="wechat-settings">
+        <!-- 动态渲染菜单 -->
+        <template v-for="menu in menuTree" :key="menu.path">
+          <!-- 目录类型菜单 -->
+          <a-sub-menu v-if="menu.type === 'directory'" :key="`dir:${menu.path}`">
             <template #icon>
-              <wechat-outlined />
+              <component :is="menu.icon" />
             </template>
-            <router-link to="/settings/wechat">公众号设置</router-link>
+            <template #title>{{ menu.name }}</template>
+            
+            <!-- 子菜单 -->
+            <template v-if="menu.children && menu.children.length">
+              <a-menu-item 
+                v-for="child in menu.children" 
+                :key="`menu:${child.path}`"
+                @click="() => router.push(child.path)"
+              >
+                <template #icon v-if="child.icon">
+                  <component :is="child.icon" />
+                </template>
+                <span>{{ child.name }}</span>
+              </a-menu-item>
+            </template>
+          </a-sub-menu>
+
+          <!-- 菜单类型 -->
+          <a-menu-item v-else :key="`menu:${menu.path}`" @click="() => router.push(menu.path)">
+            <template #icon>
+              <component :is="menu.icon" />
+            </template>
+            <span>{{ menu.name }}</span>
           </a-menu-item>
-        </a-sub-menu>
+        </template>
       </a-menu>
     </a-layout-sider>
     
@@ -116,10 +98,12 @@
   </a-layout>
 </template>
 
-<script>
-import { defineComponent, ref, watch } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, resolveComponent, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '../stores/user'
+import axios from 'axios'
+import type { Ref, Component } from 'vue'
 import {
   DashboardOutlined,
   SettingOutlined,
@@ -129,50 +113,191 @@ import {
   DownOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  WechatOutlined
+  WechatOutlined,
+  FileTextOutlined,
+  TeamOutlined,
+  SafetyCertificateOutlined,
+  MenuOutlined,
+  ProfileOutlined,
+  TagsOutlined,
+  UnorderedListOutlined
 } from '@ant-design/icons-vue'
+import type { MenuItem, ProcessedMenuItem, BaseMenuItem } from '../types/menu'
 
-export default defineComponent({
-  name: 'DefaultLayout',
-  components: {
-    DashboardOutlined,
-    SettingOutlined,
-    FileOutlined,
-    UserOutlined,
-    LogoutOutlined,
-    DownOutlined,
-    MenuFoldOutlined,
-    MenuUnfoldOutlined,
-    WechatOutlined
-  },
-  setup() {
-    const router = useRouter()
-    const route = useRoute()
-    const userStore = useUserStore()
+const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+
+const collapsed = ref(false)
+const selectedKeys = ref<string[]>([route.path])
+const openKeys = ref<string[]>([])
+const menuTree = ref<ProcessedMenuItem[]>([])
+
+// 获取菜单树数据
+const fetchMenuTree = async () => {
+  try {
+    const { data } = await axios.get('/api/system/menus/tree')
+    // 处理图标
+    const processMenuIcons = (menus: MenuItem[]): ProcessedMenuItem[] => {
+      return menus.map(menu => {
+        // 创建基础菜单项
+        const baseMenu: BaseMenuItem = {
+          id: menu.id,
+          name: menu.name,
+          path: menu.path,
+          component: menu.component,
+          type: menu.type,
+          permission: menu.permission,
+          parent_id: menu.parent_id,
+          level: menu.level,
+          sort: menu.sort,
+          status: menu.status
+        }
+
+        // 处理图标
+        const iconName = menu.icon?.replace(/Outlined$/, '')
+        const processedIcon = iconName ? resolveComponent(`${iconName}Outlined`) as Component : null
+
+        // 处理子菜单
+        const processedChildren = menu.children?.length 
+          ? processMenuIcons(menu.children)
+          : undefined
+
+        // 创建处理后的菜单项
+        const processedMenu: ProcessedMenuItem = {
+          ...baseMenu,
+          icon: processedIcon,
+          children: processedChildren
+        }
+
+        return processedMenu
+      })
+    }
+
+    menuTree.value = processMenuIcons(data)
     
-    const collapsed = ref(false)
-    const selectedKeys = ref([route.name])
-    const openKeys = ref(['system', 'settings'])
-
-    // 监听路由变化，更新选中的菜单项
-    watch(() => route.name, (newVal) => {
-      selectedKeys.value = [newVal]
-    })
-
-    const handleLogout = async () => {
-      await userStore.logout()
-      router.push('/login')
+    // 初始化展开的菜单
+    const currentPath = route.path
+    const findParentMenu = (menus: ProcessedMenuItem[], path: string): boolean => {
+      for (const menu of menus) {
+        if (menu.path === path) return true
+        if (menu.children && menu.children.length) {
+          const found = findParentMenu(menu.children, path)
+          if (found) {
+            openKeys.value.push(menu.path)
+            return true
+          }
+        }
+      }
+      return false
     }
-
-    return {
-      collapsed,
-      selectedKeys,
-      openKeys,
-      userStore,
-      handleLogout
-    }
+    findParentMenu(menuTree.value, currentPath)
+    selectedKeys.value = [currentPath]
+  } catch (error) {
+    console.error('获取菜单数据失败:', error)
+    // 添加一些默认菜单用于测试
+    const defaultMenus: ProcessedMenuItem[] = [
+      {
+        id: 1,
+        name: '仪表盘',
+        path: '/dashboard',
+        component: 'Dashboard',
+        icon: DashboardOutlined as Component,
+        type: 'menu',
+        permission: 'dashboard',
+        level: 1,
+        sort: 1,
+        status: true
+      },
+      {
+        id: 2,
+        name: '系统管理',
+        path: '/system',
+        component: 'RouteView',
+        icon: SettingOutlined as Component,
+        type: 'directory',
+        permission: 'system',
+        level: 1,
+        sort: 2,
+        status: true,
+        children: [
+          {
+            id: 3,
+            name: '用户管理',
+            path: '/system/users',
+            component: 'system/user/index',
+            icon: UserOutlined as Component,
+            type: 'menu',
+            permission: 'system:user',
+            parent_id: 2,
+            level: 2,
+            sort: 1,
+            status: true
+          },
+          {
+            id: 4,
+            name: '角色管理',
+            path: '/system/roles',
+            component: 'system/role/index',
+            icon: TeamOutlined as Component,
+            type: 'menu',
+            permission: 'system:role',
+            parent_id: 2,
+            level: 2,
+            sort: 2,
+            status: true
+          },
+          {
+            id: 5,
+            name: '菜单管理',
+            path: '/system/menus',
+            component: 'system/menu/index',
+            icon: MenuOutlined as Component,
+            type: 'menu',
+            permission: 'system:menu',
+            parent_id: 2,
+            level: 2,
+            sort: 3,
+            status: true
+          }
+        ]
+      }
+    ]
+    menuTree.value = defaultMenus
   }
+}
+
+// 监听路由变化
+watch(() => route.path, (newPath) => {
+  selectedKeys.value = [newPath]
+  // 更新展开的菜单
+  const findParentMenu = (menus: ProcessedMenuItem[], path: string): boolean => {
+    for (const menu of menus) {
+      if (menu.path === path) return true
+      if (menu.children && menu.children.length) {
+        const found = findParentMenu(menu.children, path)
+        if (found) {
+          if (!openKeys.value.includes(menu.path)) {
+            openKeys.value.push(menu.path)
+          }
+          return true
+        }
+      }
+    }
+    return false
+  }
+  findParentMenu(menuTree.value, newPath)
 })
+
+// 组件挂载时获取菜单数据
+onMounted(() => {
+  fetchMenuTree()
+})
+
+const handleLogout = async () => {
+  await userStore.logout()
+  router.push('/login')
+}
 </script>
 
 <style>

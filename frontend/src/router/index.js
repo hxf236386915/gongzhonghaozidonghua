@@ -3,6 +3,8 @@ import { useUserStore } from '@/stores/user'
 import DefaultLayout from '@/layouts/DefaultLayout.vue'
 import Login from '@/views/Login.vue'
 import Dashboard from '@/views/Dashboard.vue'
+import ArticleList from '@/views/article/List.vue'
+import ArticleEdit from '@/views/article/Edit.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -24,6 +26,21 @@ const router = createRouter({
           path: 'dashboard',
           name: 'dashboard',
           component: Dashboard
+        },
+        {
+          path: 'articles',
+          name: 'articles',
+          component: ArticleList
+        },
+        {
+          path: 'articles/edit',
+          name: 'article-create',
+          component: ArticleEdit
+        },
+        {
+          path: 'articles/edit/:id',
+          name: 'article-edit',
+          component: ArticleEdit
         },
         {
           path: 'system',

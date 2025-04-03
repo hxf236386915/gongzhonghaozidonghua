@@ -3,8 +3,14 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 import httpx
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models.wechat import WechatAccount
+from app.models.menu import Menu
+from sqlalchemy import desc
+from app.schemas.menu import MenuCreate, MenuUpdate, MenuResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/system", tags=["system"])
 
 # 模拟数据
 users_data = [
@@ -352,6 +358,122 @@ permissions_data = [
         "sort": 4,
         "status": "active",
         "created_at": "2024-03-29 10:00:00"
+    },
+    # 文章管理
+    {
+        "id": 32,
+        "name": "文章管理",
+        "code": "article",
+        "type": "directory",
+        "path": "/article",
+        "component": "Layout",
+        "sort": 2,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 33,
+        "name": "文章列表",
+        "code": "article:list",
+        "type": "menu",
+        "path": "/article/list",
+        "component": "@/views/article/List",
+        "parent_id": 32,
+        "sort": 1,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 34,
+        "name": "文章分类",
+        "code": "article:category",
+        "type": "menu",
+        "path": "/article/categories",
+        "component": "@/views/article/Categories",
+        "parent_id": 32,
+        "sort": 2,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 35,
+        "name": "文章查询",
+        "code": "article:list:query",
+        "type": "button",
+        "parent_id": 33,
+        "sort": 1,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 36,
+        "name": "文章新增",
+        "code": "article:list:create",
+        "type": "button",
+        "parent_id": 33,
+        "sort": 2,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 37,
+        "name": "文章修改",
+        "code": "article:list:update",
+        "type": "button",
+        "parent_id": 33,
+        "sort": 3,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 38,
+        "name": "文章删除",
+        "code": "article:list:delete",
+        "type": "button",
+        "parent_id": 33,
+        "sort": 4,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 39,
+        "name": "分类查询",
+        "code": "article:category:query",
+        "type": "button",
+        "parent_id": 34,
+        "sort": 1,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 40,
+        "name": "分类新增",
+        "code": "article:category:create",
+        "type": "button",
+        "parent_id": 34,
+        "sort": 2,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 41,
+        "name": "分类修改",
+        "code": "article:category:update",
+        "type": "button",
+        "parent_id": 34,
+        "sort": 3,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
+    },
+    {
+        "id": 42,
+        "name": "分类删除",
+        "code": "article:category:delete",
+        "type": "button",
+        "parent_id": 34,
+        "sort": 4,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00"
     }
 ]
 
@@ -488,6 +610,44 @@ menus_data = [
         "status": "active",
         "created_at": "2024-03-29 10:00:00",
         "permission": "settings:wechat"
+    },
+    {
+        "id": 10,
+        "name": "文章管理",
+        "path": "/article",
+        "component": "Layout",
+        "icon": "FileTextOutlined",
+        "type": "directory",
+        "sort": 2,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00",
+        "permission": "article"
+    },
+    {
+        "id": 11,
+        "name": "文章列表",
+        "path": "/article/list",
+        "component": "@/views/article/List",
+        "icon": "UnorderedListOutlined",
+        "type": "menu",
+        "parent_id": 10,
+        "sort": 1,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00",
+        "permission": "article:list"
+    },
+    {
+        "id": 12,
+        "name": "文章分类",
+        "path": "/article/categories",
+        "component": "@/views/article/Categories",
+        "icon": "TagsOutlined",
+        "type": "menu",
+        "parent_id": 10,
+        "sort": 2,
+        "status": "active",
+        "created_at": "2024-03-29 10:00:00",
+        "permission": "article:category"
     }
 ]
 
@@ -554,26 +714,31 @@ wechat_accounts = []
 
 # 公众号相关API
 @router.get("/wechat/accounts")
-async def get_wechat_accounts():
+async def get_wechat_accounts(db: Session = Depends(get_db)):
     """获取已授权的公众号列表"""
-    return wechat_accounts
+    return db.query(WechatAccount).all()
 
 @router.post("/wechat/accounts")
-async def create_wechat_account(account: dict):
+async def create_wechat_account(account: dict, db: Session = Depends(get_db)):
     """创建公众号授权"""
-    # 生成ID
-    account["id"] = len(wechat_accounts) + 1
-    account["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    wechat_accounts.append(account)
-    return account
+    db_account = WechatAccount(
+        name=account["name"],
+        appid=account["appid"],
+        appsecret=account["appsecret"]
+    )
+    db.add(db_account)
+    db.commit()
+    db.refresh(db_account)
+    return db_account
 
 @router.delete("/wechat/accounts/{account_id}")
-async def delete_wechat_account(account_id: int):
+async def delete_wechat_account(account_id: int, db: Session = Depends(get_db)):
     """删除公众号授权"""
-    account = next((a for a in wechat_accounts if a["id"] == account_id), None)
+    account = db.query(WechatAccount).filter(WechatAccount.id == account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
-    wechat_accounts.remove(account)
+    db.delete(account)
+    db.commit()
     return {"message": "Account deleted successfully"}
 
 @router.post("/wechat/accounts/test")
@@ -597,9 +762,9 @@ async def test_wechat_account(account: dict):
         return {"success": False, "message": f"测试失败：{str(e)}"}
 
 @router.post("/wechat/accounts/{account_id}/refresh")
-async def refresh_wechat_token(account_id: int):
+async def refresh_wechat_token(account_id: int, db: Session = Depends(get_db)):
     """刷新公众号token"""
-    account = next((a for a in wechat_accounts if a["id"] == account_id), None)
+    account = db.query(WechatAccount).filter(WechatAccount.id == account_id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
     
@@ -607,16 +772,17 @@ async def refresh_wechat_token(account_id: int):
         url = "https://api.weixin.qq.com/cgi-bin/token"
         params = {
             "grant_type": "client_credential",
-            "appid": account["appid"],
-            "secret": account["appsecret"]
+            "appid": account.appid,
+            "secret": account.appsecret
         }
         async with httpx.AsyncClient() as client:
             response = await client.get(url, params=params)
             result = response.json()
             if "access_token" in result:
-                account["access_token"] = result["access_token"]
-                account["expires_in"] = result["expires_in"]
-                account["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                account.access_token = result["access_token"]
+                account.expires_in = result["expires_in"]
+                account.updated_at = datetime.now()
+                db.commit()
                 return {"success": True, "message": "Token刷新成功"}
             else:
                 return {"success": False, "message": f"Token刷新失败：{result.get('errmsg', '未知错误')}"}
@@ -656,36 +822,97 @@ async def delete_permission(permission_id: int):
     raise HTTPException(status_code=404, detail="Permission not found")
 
 # 菜单管理API
-@router.get("/menus")
-async def get_menus():
-    return menus_data
+@router.get("/menus", response_model=List[MenuResponse])
+def get_menus(db: Session = Depends(get_db)):
+    """获取所有菜单"""
+    try:
+        return db.query(Menu).order_by(Menu.sort).all()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/menus/tree")
-async def get_menus_tree():
-    return build_tree(menus_data)
+def get_menus_tree(db: Session = Depends(get_db)):
+    """获取菜单树"""
+    try:
+        menus = db.query(Menu).order_by(Menu.sort).all()
+        
+        def build_tree(items, parent_id=None):
+            tree = []
+            for item in items:
+                if item.parent_id == parent_id:
+                    children = build_tree(items, item.id)
+                    menu_dict = {
+                        "id": item.id,
+                        "name": item.name,
+                        "path": item.path,
+                        "component": item.component,
+                        "icon": item.icon,
+                        "type": item.type,
+                        "permission": item.permission,
+                        "parent_id": item.parent_id,
+                        "level": item.level,
+                        "sort": item.sort,
+                        "status": item.status
+                    }
+                    if children:
+                        menu_dict["children"] = children
+                    tree.append(menu_dict)
+            return tree
+        
+        return build_tree(menus)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/menus")
-async def create_menu(menu: dict):
-    menu["id"] = len(menus_data) + 1
-    menu["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    menus_data.append(menu)
-    return menu
+@router.post("/menus", response_model=MenuResponse)
+def create_menu(menu: MenuCreate, db: Session = Depends(get_db)):
+    """创建菜单"""
+    try:
+        db_menu = Menu(**menu.dict())
+        db.add(db_menu)
+        db.commit()
+        db.refresh(db_menu)
+        return db_menu
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/menus/{menu_id}")
-async def update_menu(menu_id: int, menu: dict):
-    for i, m in enumerate(menus_data):
-        if m["id"] == menu_id:
-            menus_data[i].update(menu)
-            return menus_data[i]
-    raise HTTPException(status_code=404, detail="Menu not found")
+@router.put("/menus/{menu_id}", response_model=MenuResponse)
+def update_menu(menu_id: int, menu: MenuUpdate, db: Session = Depends(get_db)):
+    """更新菜单"""
+    try:
+        db_menu = db.query(Menu).filter(Menu.id == menu_id).first()
+        if not db_menu:
+            raise HTTPException(status_code=404, detail="Menu not found")
+        
+        for key, value in menu.dict(exclude_unset=True).items():
+            setattr(db_menu, key, value)
+        
+        db.commit()
+        db.refresh(db_menu)
+        return db_menu
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/menus/{menu_id}")
-async def delete_menu(menu_id: int):
-    for i, m in enumerate(menus_data):
-        if m["id"] == menu_id:
-            del menus_data[i]
-            return {"message": "Menu deleted"}
-    raise HTTPException(status_code=404, detail="Menu not found")
+def delete_menu(menu_id: int, db: Session = Depends(get_db)):
+    """删除菜单"""
+    try:
+        # 检查是否有子菜单
+        has_children = db.query(Menu).filter(Menu.parent_id == menu_id).first()
+        if has_children:
+            raise HTTPException(status_code=400, detail="Cannot delete menu with children")
+        
+        db_menu = db.query(Menu).filter(Menu.id == menu_id).first()
+        if not db_menu:
+            raise HTTPException(status_code=404, detail="Menu not found")
+        
+        db.delete(db_menu)
+        db.commit()
+        return {"message": "Menu deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 用户管理API
 @router.get("/users")
@@ -826,13 +1053,16 @@ async def update_role_permissions(role_id: int, data: dict):
 
 # 辅助函数：构建树形结构
 def build_tree(items, parent_id=None):
+    """构建树形结构"""
     tree = []
     for item in items:
-        if item.get("parent_id") == parent_id:
+        if (parent_id is None and "parent_id" not in item) or \
+           (parent_id is not None and item.get("parent_id") == parent_id):
+            node = item.copy()
             children = build_tree(items, item["id"])
             if children:
-                item["children"] = children
-            tree.append(item)
+                node["children"] = children
+            tree.append(node)
     return tree
 
 @router.get("/logs", response_model=dict)
@@ -881,5 +1111,4 @@ async def get_log_detail(log_id: int):
     log = next((log for log in logs_data if log["id"] == log_id), None)
     if not log:
         raise HTTPException(status_code=404, detail="Log not found")
-    return log 
     return log 
